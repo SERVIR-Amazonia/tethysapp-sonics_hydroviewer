@@ -1,0 +1,100 @@
+{% load tethys_gizmos %}
+
+{% block import_gizmos %}
+    {% import_gizmo_dependency plotly_view %}
+    {% import_gizmo_dependency datatable_view %}
+    {% import_gizmo_dependency date_picker %}
+{% endblock %}
+
+{% block panel_options %}
+    <ul class="nav nav-tabs" id="panel-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+        <button 
+            class="nav-link active" 
+            id="hydrograph-tab" 
+            data-bs-toggle="tab" 
+            data-bs-target="#hydrograph" 
+            type="button" 
+            role="tab" 
+            aria-controls="hydrograph" 
+            aria-selected="true"> Datos históricos </button> 
+        </li>
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link" 
+                id="forecast-tab" 
+                data-bs-toggle="tab"
+                data-bs-target="#forecast" 
+                type="button" 
+                role="tab" 
+                aria-controls="forecast" 
+                aria-selected="false"> Pronóstico </button>
+        </li>
+    </ul>
+    <div class="tab-content" id="panel-tab-content">
+        <div class="tab-pane fade show active" id="hydrograph" role="tabpanel" aria-labelledby="hydrograph-tab">
+            <div class="container-fluid">
+                {% gizmo corrected_data_plot %}
+                <button type="button" class="btn btn-sm btn-primary" onclick="downloadFile('get-observed-data-xlsx')">
+                    <i class="bi bi-download"></i> Descargar SONICS
+                </button>
+            </div>
+        </div>
+        
+        <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
+            <br>
+            <div style="padding-left: 12px;"><b>Fecha de inicialización:</b></div>
+            <div class="input-group" style="padding-left: 12px; padding-right: 12px;">
+                <input type="text" class="form-control" id="datepicker_raw">
+                <button class="btn btn-primary btn-sm" type="button" id="button_datepicker_raw">Actualizar</button>
+            </div>
+            <div id="container-forecast-data">
+                <div class="container-fluid" id="ensemble_forecast_plot">
+                    {% gizmo ensemble_forecast_plot %}
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="downloadFile('get-sonics-xlsx')">
+                    <i class="bi bi-download"></i> Descargar Pronóstico SONICS
+                </button>
+            </div>
+            <br>
+        </div>
+
+    </div>
+    <script>
+        
+        datepicker_raw = flatpickr("#datepicker_raw", {
+            minDate: new Date(start_date).fp_incr(1),
+            maxDate: new Date(end_date).fp_incr(1),
+            defaultDate: new Date(end_date).fp_incr(1),
+            dateFormat: "Ymd",
+            altInput: true,
+            altFormat: "F j, Y",
+            enableTime: false,
+            locale: "es"
+        });
+
+
+        $("#button_datepicker_raw").on("click", function(){
+            forecast_date = $("#datepicker_raw").val();
+            $("#ensemble_forecast_plot").html(loader);
+            // Retrieve the raw forecast
+            $.ajax({
+                type: 'GET', 
+                url: "get-raw-forecast-date",
+                data: { 
+                    fecha: forecast_date, 
+                    comid: active_comid,
+                    width: `${$("#panel-tab-content").width()}`
+                }
+            }).done(function(response){
+                $("#ensemble_forecast_plot").html(response.ensemble_forecast_plot);
+            })    
+        })
+
+        function downloadFile(api_name){
+            forecast_date = $("#datepicker_raw").val()
+            url = `${server}/apps/${app_name.replace(/_/g, "-")}/${api_name}/?fecha=${forecast_date}&comid=${active_comid}`
+            window.location.href = url;
+        }
+    </script>
+{% endblock %}
